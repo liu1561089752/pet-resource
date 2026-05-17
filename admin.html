@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资源管理面板 - 资源宝库</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 导航 -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="index.html" class="brand">
+        <div class="brand-icon">⚙️</div>
+        <span>资源管理面板</span>
+      </a>
+      <div class="nav-actions">
+        <a href="index.html" class="btn btn-secondary">← 返回主站</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 统计 -->
+  <section class="admin-stats" id="statsArea"></section>
+
+  <!-- 工具栏 -->
+  <section class="admin-toolbar">
+    <button class="btn btn-primary" onclick="openModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:text-bottom;">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      添加资源
+    </button>
+    <button class="btn btn-secondary" onclick="openExportModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:text-bottom;">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      导出 data.js
+    </button>
+  </section>
+
+  <!-- 资源列表 -->
+  <section class="admin-table-wrap">
+    <table class="admin-table" id="adminTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>缩略图</th>
+          <th>标题</th>
+          <th>分类</th>
+          <th>标签</th>
+          <th>日期</th>
+          <th style="text-align:right;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </section>
+
+  <!-- 添加/编辑模态框 -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">添加资源</span>
+        <button class="modal-close" onclick="closeEditModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editId">
+        <div class="form-group">
+          <label class="form-label">资源名称 *</label>
+          <input type="text" class="form-input" id="inputTitle" placeholder="例如：Adobe Photoshop 2024">
+        </div>
+        <div class="form-group">
+          <label class="form-label">分类 *</label>
+          <select class="form-select" id="inputCategory">
+            <option value="音乐">音乐</option>
+            <option value="游戏">游戏</option>
+            <option value="软件">软件</option>
+            <option value="壁纸">壁纸</option>
+            <option value="学习">学习</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">缩略图链接 *</label>
+          <input type="text" class="form-input" id="inputThumbnail" placeholder="https://...">
+          <div class="form-hint">支持 picsum.photos、unsplash 等图床外链</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">下载链接 *</label>
+          <input type="text" class="form-input" id="inputLink" placeholder="https://pan.baidu.com/s/...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">标签</label>
+          <input type="text" class="form-input" id="inputTags" placeholder="用逗号分隔，例如：设计, 图像处理, 专业软件">
+        </div>
+        <div class="form-group">
+          <label class="form-label">日期</label>
+          <input type="date" class="form-input" id="inputDate">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveResource()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导出模态框 -->
+  <div class="modal-overlay" id="exportModal">
+    <div class="modal" style="max-width: 720px;">
+      <div class="modal-header">
+        <span class="modal-title">导出 data.js</span>
+        <button class="modal-close" onclick="closeExportModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:1rem;font-size:0.9rem;color:var(--text-secondary);">
+          复制下方代码，替换 <code>js/data.js</code> 文件的全部内容，然后提交到 GitHub 即可自动部署。
+        </p>
+        <pre class="export-area" id="exportArea"></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeExportModal()">关闭</button>
+        <button class="btn btn-primary" onclick="copyExport()">📋 一键复制</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script>
+    // 工作副本
+    let adminData = JSON.parse(JSON.stringify(RESOURCES_DATA));
+    let editingId = null;
+
+    const editModal = document.getElementById('editModal');
+    const exportModal = document.getElementById('exportModal');
+    const tableBody = document.getElementById('tableBody');
+    const statsArea = document.getElementById('statsArea');
+
+    // 渲染统计
+    function renderStats() {
+      const total = adminData.length;
+      const stats = { 音乐:0, 游戏:0, 软件:0, 壁纸:0, 学习:0 };
+      adminData.forEach(d => { if(stats[d.category] !== undefined) stats[d.category]++; });
+
+      statsArea.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-value">${total}</div>
+          <div class="stat-label">总资源数</div>
+        </div>
+        ${Object.entries(stats).map(([k,v]) => `
+          <div class="stat-card">
+            <div class="stat-value">${v}</div>
+            <div class="stat-label">${k}</div>
+          </div>
+        `).join('')}
+      `;
+    }
+
+    // 渲染表格
+    function renderTable() {
+      renderStats();
+      if (adminData.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--text-secondary);">暂无数据，点击"添加资源"开始</td></tr>`;
+        return;
+      }
+
+      tableBody.innerHTML = adminData.map(item => `
+        <tr>
+          <td><code style="font-size:0.8rem;color:var(--text-secondary);">${item.id}</code></td>
+          <td><img src="${item.thumbnail}" class="table-thumb" onerror="this.src='https://via.placeholder.com/60x40?text=?'"></td>
+          <td style="font-weight:500;max-width:280px;" title="${escapeHtml(item.title)}">${escapeHtml(truncate(item.title, 30))}</td>
+          <td><span class="tag" style="background:rgba(79,70,229,0.1);color:var(--primary);font-weight:600;">${item.category}</span></td>
+          <td>${item.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join(' ')}</td>
+          <td style="font-size:0.85rem;color:var(--text-secondary);">${item.date}</td>
+          <td style="text-align:right;">
+            <div class="table-actions">
+              <button class="btn-icon" onclick="editResource(${item.id})" title="编辑">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="btn-icon danger" onclick="deleteResource(${item.id})" title="删除">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function truncate(str, n) {
+      return str.length > n ? str.slice(0, n) + '...' : str;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 打开添加/编辑
+    function openModal(id = null) {
+      editingId = id;
+      document.getElementById('modalTitle').textContent = id ? '编辑资源' : '添加资源';
+
+      if (id) {
+        const item = adminData.find(d => d.id === id);
+        document.getElementById('editId').value = item.id;
+        document.getElementById('inputTitle').value = item.title;
+        document.getElementById('inputCategory').value = item.category;
+        document.getElementById('inputThumbnail').value = item.thumbnail;
+        document.getElementById('inputLink').value = item.link;
+        document.getElementById('inputTags').value = item.tags.join(', ');
+        document.getElementById('inputDate').value = item.date;
+      } else {
+        document.getElementById('editId').value = '';
+        document.getElementById('inputTitle').value = '';
+        document.getElementById('inputCategory').value = '音乐';
+        document.getElementById('inputThumbnail').value = '';
+        document.getElementById('inputLink').value = '';
+        document.getElementById('inputTags').value = '';
+        document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
+      }
+
+      editModal.classList.add('active');
+    }
+
+    function closeEditModal() {
+      editModal.classList.remove('active');
+      editingId = null;
+    }
+
+    function saveResource() {
+      const title = document.getElementById('inputTitle').value.trim();
+      const category = document.getElementById('inputCategory').value;
+      const thumbnail = document.getElementById('inputThumbnail').value.trim();
+      const link = document.getElementById('inputLink').value.trim();
+      const tagsStr = document.getElementById('inputTags').value.trim();
+      const date = document.getElementById('inputDate').value;
+
+      if (!title || !thumbnail || !link) {
+        alert('请填写必填项（资源名称、缩略图、下载链接）');
+        return;
+      }
+
+      const tags = tagsStr ? tagsStr.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
+
+      if (editingId) {
+        const idx = adminData.findIndex(d => d.id === editingId);
+        if (idx !== -1) {
+          adminData[idx] = { ...adminData[idx], title, category, thumbnail, link, tags, date };
+        }
+      } else {
+        const newId = Date.now();
+        adminData.unshift({ id: newId, title, category, thumbnail, link, tags, date });
+      }
+
+      closeEditModal();
+      renderTable();
+    }
+
+    function editResource(id) {
+      openModal(id);
+    }
+
+    function deleteResource(id) {
+      if (!confirm('确定删除这条资源吗？此操作不可恢复。')) return;
+      adminData = adminData.filter(d => d.id !== id);
+      renderTable();
+    }
+
+    // 导出
+    function openExportModal() {
+      const code = `/**
+ * 资源数据文件
+ * 通过 admin.html 管理面板生成后，复制替换此文件内容
+ */
+
+const RESOURCES_DATA = ${JSON.stringify(adminData, null, 2)};`;
+      document.getElementById('exportArea').textContent = code;
+      exportModal.classList.add('active');
+    }
+
+    function closeExportModal() {
+      exportModal.classList.remove('active');
+    }
+
+    function copyExport() {
+      const text = document.getElementById('exportArea').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('已复制到剪贴板！请粘贴到 js/data.js 文件中。');
+      }).catch(() => {
+        alert('复制失败，请手动复制。');
+      });
+    }
+
+    // 点击遮罩关闭
+    editModal.onclick = (e) => { if (e.target === editModal) closeEditModal(); };
+    exportModal.onclick = (e) => { if (e.target === exportModal) closeExportModal(); };
+
+    // 初始化
+    renderTable();
+  </script>
+</body>
+</html>
