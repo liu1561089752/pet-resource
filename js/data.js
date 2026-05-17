@@ -7,7 +7,7 @@ const RESOURCES_DATA = [
   {
     "id": 1715900001000,
     "title": "《夺海奇航》v1.2.0.7 PC中文版 蒸汽朋克航海策略肉鸽冒险【209MB】",
-    "thumbnail": "https://kuakezy.cc/upload/attach/202605/25120_Y6SAKGK6M9UFN3Q.jpg",
+    "thumbnail": "https://pic1.imgdb.cn/item/6a09950b42582d261d233f89.jpg",
     "link": "https://pan.quark.cn/s/28b3f8b1f4f0",
     "tags": [
       "角色扮演",
