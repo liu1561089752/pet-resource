@@ -7,21 +7,19 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- 导航 -->
+  <!-- 导航（已移除管理按钮） -->
   <nav class="navbar">
     <div class="navbar-inner">
       <a href="index.html" class="brand">
         <div class="brand-icon">📦</div>
         <span>资源宝库</span>
       </a>
-      <div class="search-wrap">
+      <!-- 搜索框自动占满右侧空间 -->
+      <div class="search-wrap" style="max-width: 520px; margin-left: auto;">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <input type="text" id="searchInput" placeholder="搜索资源名称、标签..." autocomplete="off">
-      </div>
-      <div class="nav-actions">
-        <a href="admin.html" class="btn btn-secondary">⚙️ 管理</a>
       </div>
     </div>
   </nav>
@@ -53,9 +51,9 @@
         <span class="badge" id="countBadge">0</span>
       </h2>
     </div>
-
+    
     <div class="resource-grid" id="resourceGrid"></div>
-
+    
     <div class="empty-state" id="emptyState" style="display: none;">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -120,7 +118,7 @@
     let currentCategory = '全部';
     let searchQuery = '';
     let pendingLink = null;
-
+    
     const categoryList = document.getElementById('categoryList');
     const resourceGrid = document.getElementById('resourceGrid');
     const emptyState = document.getElementById('emptyState');
@@ -130,48 +128,48 @@
     const agreeCheck = document.getElementById('agreeCheck');
     const rememberCheck = document.getElementById('rememberCheck');
     const confirmBtn = document.getElementById('confirmDownloadBtn');
-
+    
     // 渲染分类
     function renderCategories() {
       categoryList.innerHTML = categories.map(cat => `
-        <button class="category-chip ${cat === currentCategory ? 'active' : ''}"
+        <button class="category-chip ${cat === currentCategory ? 'active' : ''}" 
                 onclick="setCategory('${cat}')">${cat}</button>
       `).join('');
     }
-
+    
     function setCategory(cat) {
       currentCategory = cat;
       renderCategories();
       filterAndRender();
     }
-
+    
     // 过滤与渲染
     function filterAndRender() {
       let filtered = RESOURCES_DATA.filter(item => {
         const matchCat = currentCategory === '全部' || item.category === currentCategory;
         const q = searchQuery.toLowerCase().trim();
-        const matchSearch = !q ||
+        const matchSearch = !q || 
           item.title.toLowerCase().includes(q) ||
           item.tags.some(t => t.toLowerCase().includes(q));
         return matchCat && matchSearch;
       });
-
+      
       filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
       countBadge.textContent = filtered.length;
-
+      
       if (filtered.length === 0) {
         resourceGrid.style.display = 'none';
         emptyState.style.display = 'block';
         return;
       }
-
+      
       resourceGrid.style.display = 'grid';
       emptyState.style.display = 'none';
-
+      
       resourceGrid.innerHTML = filtered.map((item, i) => `
         <div class="card" style="animation-delay: ${i * 0.06}s">
           <div class="card-image-wrap">
-            <img src="${item.thumbnail}" alt="${escapeHtml(item.title)}" class="card-image" loading="lazy"
+            <img src="${item.thumbnail}" alt="${escapeHtml(item.title)}" class="card-image" loading="lazy" 
                  onerror="this.src='https://via.placeholder.com/600x400?text=No+Image'">
             <span class="card-category-badge">${item.category}</span>
           </div>
@@ -201,31 +199,31 @@
         </div>
       `).join('');
     }
-
+    
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     }
-
+    
     // 下载处理
     function handleDownload(link, e) {
       e.stopPropagation();
       pendingLink = link;
-
+      
       const agreed = localStorage.getItem('disclaimer_agreed');
       const expiry = localStorage.getItem('disclaimer_expiry');
-
+      
       if (agreed === 'true' && expiry && Date.now() < parseInt(expiry)) {
         window.open(link, '_blank');
         return;
       }
-
+      
       agreeCheck.checked = false;
       rememberCheck.checked = false;
       modal.classList.add('active');
     }
-
+    
     confirmBtn.onclick = () => {
       if (!agreeCheck.checked) {
         alert('请先勾选"我已阅读并同意上述声明"');
@@ -238,22 +236,22 @@
       closeModal();
       if (pendingLink) window.open(pendingLink, '_blank');
     };
-
+    
     function closeModal() {
       modal.classList.remove('active');
       pendingLink = null;
     }
-
+    
     modal.onclick = (e) => {
       if (e.target === modal) closeModal();
     };
-
+    
     // 搜索
     searchInput.addEventListener('input', (e) => {
       searchQuery = e.target.value;
       filterAndRender();
     });
-
+    
     // 初始化
     renderCategories();
     filterAndRender();
